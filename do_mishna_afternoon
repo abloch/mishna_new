@@ -1,0 +1,13 @@
+#!/bin/bash
+set -e
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+LOCAL=${SCRIPT_DIR}/current.json
+REMOTE=s3://akiimages/mishna/current.json
+LOG_FILE=${SCRIPT_DIR}/mishna.log
+
+cd $SCRIPT_DIR
+./mishna.pex is_yomtov.py .env.json || exit 1
+./mishna.pex is_erev_yomtov.py .env.json || exit 1
+/usr/bin/aws s3 cp $REMOTE $LOCAL
+./mishna.pex get_mishna.py .env.json
+/usr/bin/aws s3 cp $LOCAL $REMOTE

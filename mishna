@@ -1,0 +1,5 @@
+#!/bin/bash
+set -e
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+LOG_FILE=${SCRIPT_DIR}/mishna.log
+$SCRIPT_DIR/do_mishna 2>&1 >> $LOG_FILE
