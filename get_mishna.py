@@ -28,8 +28,15 @@ def get_wikisource_page(page:str, html_ver:bool=False):
     # print(url)
     return requests.get(url).json()['parse']['text' if html_ver else 'wikitext']['*']
 
+def get_variated_masechet(name):
+	VARIATIONS = {
+		"בכורים": "ביכורים",
+	}
+	return VARIATIONS.get(name, name)
+
 @lru_cache(maxsize=1024)
 def get_sefaria_url(masechet, chapter, mishna):
+    masechet = get_variated_masechet(masechet)
     title = f"משנה_{masechet}_{chapter}_{mishna}"
     url = f"https://www.sefaria.org.il/api/name/{title}"
     name_reply = requests.get(url).json()
