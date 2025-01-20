@@ -6,8 +6,11 @@ REMOTE=s3://akiimages/mishna/current.json
 LOG_FILE=${SCRIPT_DIR}/mishna.log
 
 cd $SCRIPT_DIR
-./mishna.pex is_yomtov.py .env.json || exit 1
-./mishna.pex is_erev_yomtov.py .env.json || exit 1
+date >> $LOG_FILE
+
+/home/akiva/.virtualenvs/mishna-BtaVCHiw/bin/python /home/akiva/projects/mishna/is_yomtov.py /home/akiva/projects/mishna/.env.json || exit 1
+/home/akiva/.virtualenvs/mishna-BtaVCHiw/bin/python /home/akiva/projects/mishna/is_erev_yomtov.py /home/akiva/projects/mishna/.env.json || exit 1
 /usr/bin/aws s3 cp $REMOTE $LOCAL
-./mishna.pex get_mishna.py .env.json
+/home/akiva/.virtualenvs/mishna-BtaVCHiw/bin/python /home/akiva/projects/mishna/get_mishna.py /home/akiva/projects/mishna/.env.json 2>&1 >> $LOG_FILE
 /usr/bin/aws s3 cp $LOCAL $REMOTE
+echo done >> $LOG_FILE

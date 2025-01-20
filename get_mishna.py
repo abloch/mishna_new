@@ -23,6 +23,7 @@ config = json.load(open(argv[1]))
 
 def get_wikisource_page(page:str, html_ver:bool=False):
     url = f"https://he.wikisource.org/w/api.php?action=parse&page={page}&format=json"
+    print(url)
     if not html_ver:
         url = url + '&prop=wikitext'
     # print(url)
@@ -31,12 +32,20 @@ def get_wikisource_page(page:str, html_ver:bool=False):
 def get_variated_masechet(name):
 	VARIATIONS = {
 		"בכורים": "ביכורים",
+        "ערובין": "עירובין",
 	}
 	return VARIATIONS.get(name, name)
 
+def get_unvariated_masechet(name):
+	VARIATIONS = {
+		"ביכורים": "בכורים",
+        "עירובין": "ערובין",
+	}
+	return VARIATIONS.get(name, name)
+
+
 @lru_cache(maxsize=1024)
 def get_sefaria_url(masechet, chapter, mishna):
-    masechet = get_variated_masechet(masechet)
     title = f"משנה_{masechet}_{chapter}_{mishna}"
     url = f"https://www.sefaria.org.il/api/name/{title}"
     name_reply = requests.get(url).json()
@@ -106,10 +115,13 @@ def explanaize(texts):
 
 @lru_cache(maxsize=2048)
 def get_mishna_part(masechet, chapter, mishna):
-    all_text = get_wikisource_page(f"ביאור:משנה_{masechet}_פרק_{chapter}", True)
+    url = f"ביאור:משנה_{get_unvariated_masechet(masechet)}_פרק_{chapter}"
+    all_text = get_wikisource_page(url, True)
     soup = BeautifulSoup(all_text, features='html.parser')
     el = soup.find("div", {"id": f"משנה_{mishna}"})
     elements = [el]
+    if el is None:
+        raise f"could not parse {el}"
     for i in el.next_siblings:
         if i.name=='div' and i.get("id", "").startswith("משנה_"):
             break
@@ -141,28 +153,17 @@ def get_mishna(masechet, chapter, mishna):
         ret += "\n\n".join([italize(expl) for expl in explanations])
     return ret
 
-def send_to_whatsapp(message, group_name="משנה יומית"):
-    whatsmate_url = "https://api.whatsmate.net/v3/whatsapp/group/text/message/23"
+def send_to_whatsapp(message):
+    whatsmate_url = "https://gate.whapi.cloud/messages/text"
     headers = {
-        "X-WM-CLIENT-ID": config["X_WM_CLIENT_ID"],
-        "X-WM-CLIENT-SECRET": config["X_WM_CLIENT_SECRET"],
+            "Authorization": config["WHAPI_AUTH"],
     }
-    group_admin = config["GROUP_ADMIN"]
     payload = {
-        "group_admin": group_admin,
-        "group_name": group_name if not config["DRY_RUN"] else "טטט",
-        "message": message,
+        "to": config["MISHNA_GROUP"],
+        "body": message,
     }
     resp = requests.post(whatsmate_url, headers=headers, json=payload).json()
     print(resp)
-    if resp.get("error_message") == "Message is too long":
-        splitter = '\n\n' if '\n\n' in message else '\n'
-        parts = message.split(splitter)
-        middle = len(parts) // 2
-        first = splitter.join(parts[:middle])
-        second = splitter.join(parts[middle:])
-        send_to_whatsapp(first, group_name)
-        send_to_whatsapp(second, group_name)
 
 def send_to_telegram(message, group="@mishna"):
     if config["DRY_RUN"]:
@@ -179,10 +180,13 @@ def send_all(masechet, chapter, mishna):
     open("mishna.txt", "w").write(out)
 
 def get_next_mishna(masechet, chapter, mishna):
-    title = f"משנה_{masechet}_{chapter}_{mishna}"
+    title = f"משנה_{get_variated_masechet(masechet)}_{chapter}_{mishna}"
     url = f"https://he.wikisource.org/w/api.php?action=query&prop=revisions&rvprop=content&rvsection=0&titles={title}&format=json&rvslots=*"
+    print(url)
     reply = requests.get(url).json()
     metadata = next(iter(reply["query"]["pages"].values()))["revisions"][0]["slots"]["main"]["*"]
+    if metadata is None:
+        raise f"{url} is malformed"
     parts = re.search(r"\{\{(.*?)\}\}", metadata).group(1).split("|")
     next_mishna = parts[-1]
     *masechet, chapter, mishna = next_mishna.split(" ")
