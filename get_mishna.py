@@ -188,7 +188,7 @@ def get_next_mishna(masechet, chapter, mishna):
     if metadata is None:
         raise f"{url} is malformed"
     parts = re.search(r"\{\{(.*?)\}\}", metadata).group(1).split("|")
-    next_mishna = parts[-1]
+    next_mishna = parts[6]
     *masechet, chapter, mishna = next_mishna.split(" ")
     return " ".join(masechet), chapter, mishna
 
