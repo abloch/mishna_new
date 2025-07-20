@@ -5,6 +5,7 @@ import requests
 import telepot
 from functools import lru_cache
 from sys import argv
+from requests.adapters import HTTPAdapter, Retry
 
 mishna_pattern = r"<.+?>"
 mishna_re = re.compile(mishna_pattern)
@@ -20,6 +21,8 @@ title_pattern = re.compile(r"\=\=\=[^=]*?===")
 
 config = json.load(open(argv[1]))
 
+s = requests.Session()
+s.mount("https://", HTTPAdapter(max_retries=Retry(total=50, backoff_factor=1.1)))
 
 def get_wikisource_page(page:str, html_ver:bool=False):
     url = f"https://he.wikisource.org/w/api.php?action=parse&page={page}&format=json"
@@ -27,7 +30,7 @@ def get_wikisource_page(page:str, html_ver:bool=False):
     if not html_ver:
         url = url + '&prop=wikitext'
     # print(url)
-    return requests.get(url).json()['parse']['text' if html_ver else 'wikitext']['*']
+    return s.get(url).json()['parse']['text' if html_ver else 'wikitext']['*']
 
 def get_variated_masechet(name):
 	VARIATIONS = {
@@ -48,7 +51,7 @@ def get_unvariated_masechet(name):
 def get_sefaria_url(masechet, chapter, mishna):
     title = f"משנה_{masechet}_{chapter}_{mishna}"
     url = f"https://www.sefaria.org.il/api/name/{title}"
-    name_reply = requests.get(url).json()
+    name_reply = s.get(url).json()
     if not name_reply['is_ref']:
         raise RuntimeError(f"{title} is not a reference")
     return name_reply['url']
@@ -56,7 +59,7 @@ def get_sefaria_url(masechet, chapter, mishna):
 @lru_cache(maxsize=1024)
 def get_sefaria(masechet, chapter, mishna):
     url = get_sefaria_url(masechet, chapter, mishna)
-    return requests.get(f"https://www.sefaria.org.il/api/texts/{url}").json()
+    return s.get(f"https://www.sefaria.org.il/api/texts/{url}").json()
 
 def boldize(text):
     return "\n".join([f"*{line.strip()}*" for line in text.split("\n")])
@@ -162,7 +165,7 @@ def send_to_whatsapp(message):
         "to": config["MISHNA_GROUP"],
         "body": message,
     }
-    resp = requests.post(whatsmate_url, headers=headers, json=payload).json()
+    resp = s.post(whatsmate_url, headers=headers, json=payload).json()
     print(resp)
 
 def send_to_telegram(message, group="@mishna"):
@@ -183,7 +186,7 @@ def get_next_mishna(masechet, chapter, mishna):
     title = f"משנה_{get_variated_masechet(masechet)}_{chapter}_{mishna}"
     url = f"https://he.wikisource.org/w/api.php?action=query&prop=revisions&rvprop=content&rvsection=0&titles={title}&format=json&rvslots=*"
     print(url)
-    reply = requests.get(url).json()
+    reply = s.get(url).json()
     metadata = next(iter(reply["query"]["pages"].values()))["revisions"][0]["slots"]["main"]["*"]
     if metadata is None:
         raise f"{url} is malformed"
@@ -206,7 +209,7 @@ def deserialize():
 
 def main():
     masechet, chapter, mishna = deserialize()
-    send_all(masechet, chapter, mishna)
+    # send_all(masechet, chapter, mishna)
     masechet, chapter, mishna = get_next_mishna(masechet, chapter, mishna)
     serialize(masechet, chapter, mishna)
 
