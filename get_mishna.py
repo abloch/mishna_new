@@ -209,7 +209,7 @@ def deserialize():
 
 def main():
     masechet, chapter, mishna = deserialize()
-    # send_all(masechet, chapter, mishna)
+    send_all(masechet, chapter, mishna)
     masechet, chapter, mishna = get_next_mishna(masechet, chapter, mishna)
     serialize(masechet, chapter, mishna)
 
