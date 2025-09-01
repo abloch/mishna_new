@@ -228,7 +228,8 @@ def deserialize():
 
 def main():
     masechet, chapter, mishna = deserialize()
-    send_all(masechet, chapter, mishna)
+    if not config.get("DRY_RUN"):
+        send_all(masechet, chapter, mishna)
     masechet, chapter, mishna = get_next_mishna(masechet, chapter, mishna)
     serialize(masechet, chapter, mishna)
 
