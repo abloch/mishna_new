@@ -1,4 +1,5 @@
 import re
+import time
 import json
 from bs4 import BeautifulSoup
 import requests
@@ -28,8 +29,13 @@ def get_wikisource_page(page:str, html_ver:bool=False):
     url = f"https://he.wikisource.org/w/api.php?action=parse&page={page}&format=json"
     print(url)
     if not html_ver:
-        url = url + '&prop=wikitext'
-    return s.get(url, headers={"User-Agent": user_agent}).json()['parse']['text' if html_ver else 'wikitext']['*']
+        url = url + '&prop=wikitext'    
+    while True:
+        resp = s.get(url, headers={"User-Agent": user_agent})
+        time.sleep(2)
+        if resp.ok:
+            return resp.json()['parse']['text' if html_ver else 'wikitext']['*']
+
 
 def get_variated_masechet(name):
 	VARIATIONS = {
