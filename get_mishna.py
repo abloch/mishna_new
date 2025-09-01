@@ -23,6 +23,7 @@ user_agent='MishnaParser/0.4 (https://chat.whatsapp.com/20DFdNlIpKD509iShMCkkO/)
 config = json.load(open(argv[1]))
 
 s = requests.Session()
+s.headers.update({'User-Agent': user_agent})
 s.mount("https://", HTTPAdapter(max_retries=Retry(total=50, backoff_factor=1.1)))
 
 def get_wikisource_page(page:str, html_ver:bool=False):
@@ -85,7 +86,7 @@ def get_all_chapter_page(masechet, chapter):
     return get_wikisource_page(title)
 
 def get_mishna_part(text, mishna):
-    return re.findall(f"<קטע התחלה\={mishna}/>(.*)<קטע סוף={mishna}/>", text)
+    return re.findall(f"<קטע התחלה\\={mishna}/>(.*)<קטע סוף={mishna}/>", text)
 
 def get_commentary(masechet, chapter, mishna):
     html = get_mishna_part(masechet, chapter, mishna)
@@ -188,10 +189,23 @@ def send_all(masechet, chapter, mishna):
     open("mishna.txt", "w").write(out)
 
 def get_next_mishna(masechet, chapter, mishna):
+    import urllib.parse
     title = f"משנה_{get_variated_masechet(masechet)}_{chapter}_{mishna}"
-    url = f"https://he.wikisource.org/w/api.php?action=query&prop=revisions&rvprop=content&rvsection=0&titles={title}&format=json&rvslots=*"
+    encoded_title = urllib.parse.quote(title.encode('utf-8'))
+    url = f"https://he.wikisource.org/w/api.php?action=query&prop=revisions&rvprop=content&rvsection=0&titles={encoded_title}&format=json&rvslots=*"
     print(url)
-    reply = s.get(url).json()
+    response = s.get(url)
+    if response.status_code != 200:
+        print(f"HTTP Error {response.status_code}: {response.text}")
+        raise Exception(f"API request failed with status {response.status_code}")
+    
+    try:
+        reply = response.json()
+    except json.JSONDecodeError as e:
+        print(f"JSON decode error: {e}")
+        print(f"Response content: {response.text[:500]}")
+        raise e
+        
     metadata = next(iter(reply["query"]["pages"].values()))["revisions"][0]["slots"]["main"]["*"]
     if metadata is None:
         raise f"{url} is malformed"
