@@ -18,7 +18,7 @@ quotes_re = re.compile(r"\((.*?)\)")
 explanation_pattern = r"\{\{ב|מגירה\|(.*?)\|(.*?)\}\}"
 explanation_re = re.compile(explanation_pattern)
 title_pattern = re.compile(r"\=\=\=[^=]*?===")
-
+user_agent='MishnaParser/0.4 (https://chat.whatsapp.com/20DFdNlIpKD509iShMCkkO/) generic-library/0.0'
 config = json.load(open(argv[1]))
 
 s = requests.Session()
@@ -29,8 +29,7 @@ def get_wikisource_page(page:str, html_ver:bool=False):
     print(url)
     if not html_ver:
         url = url + '&prop=wikitext'
-    # print(url)
-    return s.get(url).json()['parse']['text' if html_ver else 'wikitext']['*']
+    return s.get(url, headers={"User-Agent": user_agent}).json()['parse']['text' if html_ver else 'wikitext']['*']
 
 def get_variated_masechet(name):
 	VARIATIONS = {
