@@ -42,6 +42,7 @@ def get_variated_masechet(name):
 	VARIATIONS = {
 		"בכורים": "ביכורים",
         "ערובין": "עירובין",
+        "עדיות": "עדויות",
 	}
 	return VARIATIONS.get(name, name)
 
