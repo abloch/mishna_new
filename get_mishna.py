@@ -218,7 +218,7 @@ def get_next_mishna(masechet, chapter, mishna):
 def serialize(masechet, chapter, mishna):
     filename = config['SERIALZIZATION_FILENAME']
     payload = {
-        "masechet": masechet, "chapter": chapter, "mishna": mishna
+        "masechet": get_variated_masechet(masechet), "chapter": chapter, "mishna": mishna
     }
     json.dump(payload, open(filename, "w"), ensure_ascii=False)
 
