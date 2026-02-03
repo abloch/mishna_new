@@ -8,7 +8,7 @@ LOG_FILE=${SCRIPT_DIR}/mishna.log
 cd $SCRIPT_DIR
 date >> $LOG_FILE
 
-uv run python ./mishna/is_yomtov.py ./.env.json || exit 1
+uv run python ./is_yomtov.py ./.env.json || exit 1
 /usr/bin/aws s3 cp $REMOTE $LOCAL
 uv run python ./get_mishna.py ./.env.json 2>&1 >> $LOG_FILE
 /usr/bin/aws s3 cp $LOCAL $REMOTE
