@@ -180,13 +180,16 @@ def send_to_telegram(message, group="@mishna"):
         group = 215513269
     token = config["TELEGRAM_TOKEN"]
     bot = telepot.Bot(token)
-    bot.sendMessage(group, message)
+    bot.sendMessage(group, message[:150])
 
 def send_all(masechet, chapter, mishna):
     out = get_mishna(masechet, chapter, mishna).strip()
     if not config.get("LOCAL"):
         send_to_whatsapp(out)
-        send_to_telegram(out)
+        try:
+            send_to_telegram(out)
+        except Exception as e:
+            print(e)
     open("mishna.txt", "w").write(out)
 
 def get_next_mishna(masechet, chapter, mishna):

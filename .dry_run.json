@@ -1,5 +1,8 @@
 {
+    "X_WM_CLIENT_ID": "atar.shirim@gmail.com",
+    "X_WM_CLIENT_SECRET": "df808e8f83f543e7a232c4568307062c",
+    "GROUP_ADMIN": "972508237338",
+    "TELEGRAM_TOKEN": "183507272:AAFFJEv5Jsn2IVjAAITZB-Jcmg2sfgstvhs",
     "DRY_RUN": true,
-    "SERIALZIZATION_FILENAME": "current.json",
-    "WHAPI_AUTH": "test"
+    "SERIALZIZATION_FILENAME": "current.json"
 }
