@@ -31,6 +31,8 @@ jobs:
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
 
       - name: Build and Push Docker image
+        timeout_minutes: 10
+        max_attempts: 3
         run: |
           IMAGE_URI=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.IMAGE }}
           docker build -t $IMAGE_URI:${{ github.sha }} -t $IMAGE_URI:latest .
