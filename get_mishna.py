@@ -1,9 +1,9 @@
 import re
 import time
 import json
+from os import environ
 from bs4 import BeautifulSoup
 import requests
-import telepot
 from functools import lru_cache
 from sys import argv
 from requests.adapters import HTTPAdapter, Retry
@@ -20,17 +20,32 @@ explanation_pattern = r"\{\{ב|מגירה\|(.*?)\|(.*?)\}\}"
 explanation_re = re.compile(explanation_pattern)
 title_pattern = re.compile(r"\=\=\=[^=]*?===")
 user_agent='MishnaParser/0.4 (https://chat.whatsapp.com/20DFdNlIpKD509iShMCkkO/) generic-library/0.0'
-config = json.load(open(argv[1]))
 
 s = requests.Session()
 s.headers.update({'User-Agent': user_agent})
 s.mount("https://", HTTPAdapter(max_retries=Retry(total=50, backoff_factor=1.1)))
 
+def parse_config():
+    config_values = [
+        "DRY_RUN",
+        "GROUP_ADMIN",
+        "MISHNA_GROUP",
+        "SERIALZIZATION_FILENAME",
+        "TELEGRAM_TOKEN",
+        "WHAPI_AUTH"
+        "X_WM_CLIENT_ID",
+        "X_WM_CLIENT_SECRET"
+    ]
+    return {
+        value: environ.get(value)
+        for value in config_values
+    }
+
 def get_wikisource_page(page:str, html_ver:bool=False):
     url = f"https://he.wikisource.org/w/api.php?action=parse&page={page}&format=json"
     print(url)
     if not html_ver:
-        url = url + '&prop=wikitext'    
+        url = url + '&prop=wikitext'
     while True:
         resp = s.get(url, headers={"User-Agent": user_agent})
         time.sleep(2)
@@ -99,7 +114,7 @@ def get_explanations(masechet, chapter, mishna):
     html = get_mishna_part(masechet, chapter, mishna)
     soup = BeautifulSoup(html, features='html.parser')
     return [td.text.strip() for td in soup.find_all("table") if hasattr(td, 'text')]
-    
+
 def commentize(commetraies):
     return "\n".join([f"*{c[0].strip()}* - _{c[1].strip()}_" for c in commetraies])
 
@@ -150,7 +165,7 @@ def get_mishna_title(masechet, chapter, mishna):
 def get_mishna(masechet, chapter, mishna):
     ret = underline(get_mishna_title(masechet, chapter, mishna))
     ret += boldize(get_mishna_text(masechet, chapter, mishna)) + "\n\n"
-    commentary = get_commentary(masechet, chapter, mishna) 
+    commentary = get_commentary(masechet, chapter, mishna)
     if commentary:
         ret += underline("משנה מבוארת")
         ret += commentize(commentary) + "\n\n"
@@ -163,7 +178,7 @@ def get_mishna(masechet, chapter, mishna):
         ret += "\n\n".join([italize(expl) for expl in explanations])
     return ret
 
-def send_to_whatsapp(message):
+def send_to_whatsapp(config, message):
     whatsmate_url = "https://gate.whapi.cloud/messages/text"
     headers = {
             "Authorization": config["WHAPI_AUTH"],
@@ -175,19 +190,20 @@ def send_to_whatsapp(message):
     resp = s.post(whatsmate_url, headers=headers, json=payload).json()
     print(resp)
 
-def send_to_telegram(message, group="@mishna"):
+def send_to_telegram(config, message, group="@mishna"):
     if config["DRY_RUN"]:
         group = 215513269
     token = config["TELEGRAM_TOKEN"]
-    bot = telepot.Bot(token)
-    bot.sendMessage(group, message[:150])
+    requests.get(
+        f"https://api.telegram.org/bot{token}/sendMessage",
+        params={"chat_id": group, "text": message})
 
-def send_all(masechet, chapter, mishna):
+def send_all(config, masechet, chapter, mishna):
     out = get_mishna(masechet, chapter, mishna).strip()
     if not config.get("LOCAL"):
-        send_to_whatsapp(out)
+        send_to_whatsapp(config, out)
         try:
-            send_to_telegram(out)
+            send_to_telegram(config, out)
         except Exception as e:
             print(e)
     open("mishna.txt", "w").write(out)
@@ -202,14 +218,14 @@ def get_next_mishna(masechet, chapter, mishna):
     if response.status_code != 200:
         print(f"HTTP Error {response.status_code}: {response.text}")
         raise Exception(f"API request failed with status {response.status_code}")
-    
+
     try:
         reply = response.json()
     except json.JSONDecodeError as e:
         print(f"JSON decode error: {e}")
         print(f"Response content: {response.text[:500]}")
         raise e
-        
+
     metadata = next(iter(reply["query"]["pages"].values()))["revisions"][0]["slots"]["main"]["*"]
     if metadata is None:
         raise f"{url} is malformed"
@@ -218,24 +234,25 @@ def get_next_mishna(masechet, chapter, mishna):
     *masechet, chapter, mishna = next_mishna.split(" ")
     return " ".join(masechet), chapter, mishna
 
-def serialize(masechet, chapter, mishna):
+def serialize(config, masechet, chapter, mishna):
     filename = config['SERIALZIZATION_FILENAME']
     payload = {
         "masechet": get_variated_masechet(masechet), "chapter": chapter, "mishna": mishna
     }
     json.dump(payload, open(filename, "w"), ensure_ascii=False)
 
-def deserialize():
+def deserialize(config):
     filename = config['SERIALZIZATION_FILENAME']
     payload = json.load(open(filename))
     return payload['masechet'], payload['chapter'], payload['mishna']
 
 def main():
-    masechet, chapter, mishna = deserialize()
+    config = parse_config()
+    masechet, chapter, mishna = deserialize(config)
     if not config.get("DRY_RUN"):
-        send_all(masechet, chapter, mishna)
+        send_all(config, masechet, chapter, mishna)
     masechet, chapter, mishna = get_next_mishna(masechet, chapter, mishna)
-    serialize(masechet, chapter, mishna)
+    serialize(config, masechet, chapter, mishna)
 
 if __name__ == "__main__":
     main()
