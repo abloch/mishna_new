@@ -33,13 +33,36 @@ jobs:
       - name: Build and Push Docker image
         run: |
           IMAGE_URI=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.IMAGE }}
-          docker build -t $IMAGE_URI:${{ github.sha }} -t $IMAGE_URI:latest .
-          docker push $IMAGE_URI:${{ github.sha }}
-          docker push $IMAGE_URI:latest
 
-      - name: Update Cloud Run Job
-        run: |
-          IMAGE_URI=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.IMAGE }}:${{ github.sha }}
-          gcloud run jobs update ${{ env.JOB_NAME }} \
-            --image=$IMAGE_URI \
-            --region=${{ env.REGION }}
+          # Function to retry commands with exponential backoff
+          retry() {
+            local max_attempts=3
+            local initial_delay=5
+            local attempt=1
+
+            while [ $attempt -le $max_attempts ]; do
+              echo "Attempt $attempt of $max_attempts..."
+              if "$@"; then
+                return 0
+              else
+                echo "Command failed on attempt $attempt"
+                if [ $attempt -eq $max_attempts ]; then
+                  echo "All attempts failed"
+                  return 1
+                fi
+                local delay=$((initial_delay * (2 ** (attempt - 1))))
+                echo "Retrying in $delay seconds..."
+                sleep $delay
+                ((attempt++))
+              fi
+            done
+          }
+
+          # Build Docker image with retry
+          retry docker build -t $IMAGE_URI:${{ github.sha }} -t $IMAGE_URI:latest .
+
+          # Push sha-tagged image with retry
+          retry docker push $IMAGE_URI:${{ github.sha }}
+
+          # Push latest-tagged image with retry
+          retry docker push $IMAGE_URI:latest
