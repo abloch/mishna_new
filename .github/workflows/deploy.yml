@@ -1,0 +1,46 @@
+name: Deploy to Cloud Run Jobs
+
+on:
+  push:
+    branches: [main]
+
+env:
+  PROJECT_ID: personal-assistant-454804
+  REGION: europe-west1
+  REPO: mishna
+  IMAGE: mishnaimage
+  JOB_NAME: my-job
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # required for Workload Identity
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: "projects/600766438371/locations/global/workloadIdentityPools/github-pool/providers/github-provider"
+          credentials_json: ${{ secrets.GCLOUD_SERVICE_ACCOUNT }}
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      - name: Build and Push Docker image
+        run: |
+          IMAGE_URI=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.IMAGE }}
+          docker build -t $IMAGE_URI:${{ github.sha }} -t $IMAGE_URI:latest .
+          docker push $IMAGE_URI:${{ github.sha }}
+          docker push $IMAGE_URI:latest
+
+      - name: Update Cloud Run Job
+        run: |
+          IMAGE_URI=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.IMAGE }}:${{ github.sha }}
+          gcloud run jobs update ${{ env.JOB_NAME }} \
+            --image=$IMAGE_URI \
+            --region=${{ env.REGION }}
