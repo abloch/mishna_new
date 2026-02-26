@@ -2,7 +2,7 @@ name: Deploy to Cloud Run Jobs
 
 on:
   push:
-    branches: [main]
+    branches: [gcp]
 
 env:
   PROJECT_ID: personal-assistant-454804
