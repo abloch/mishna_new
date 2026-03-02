@@ -5,7 +5,7 @@ from os import environ
 from bs4 import BeautifulSoup
 import requests
 from functools import lru_cache
-from sys import argv
+from persistance import get_blob_as_dict, save_dict_as_blob
 from requests.adapters import HTTPAdapter, Retry
 
 mishna_pattern = r"<.+?>"
@@ -28,6 +28,7 @@ s.mount("https://", HTTPAdapter(max_retries=Retry(total=50, backoff_factor=1.1))
 def parse_config():
     config_values = [
         "DRY_RUN",
+        "GOOGLE_STORAGE_BUCKET",
         "GROUP_ADMIN",
         "MISHNA_GROUP",
         "SERIALZIZATION_FILENAME",
@@ -235,15 +236,13 @@ def get_next_mishna(masechet, chapter, mishna):
     return " ".join(masechet), chapter, mishna
 
 def serialize(config, masechet, chapter, mishna):
-    filename = config['SERIALZIZATION_FILENAME']
     payload = {
         "masechet": get_variated_masechet(masechet), "chapter": chapter, "mishna": mishna
     }
-    json.dump(payload, open(filename, "w"), ensure_ascii=False)
+    save_dict_as_blob(config, payload)
 
 def deserialize(config):
-    filename = config['SERIALZIZATION_FILENAME']
-    payload = json.load(open(filename))
+    payload = get_blob_as_dict(config)
     return payload['masechet'], payload['chapter'], payload['mishna']
 
 def main():
