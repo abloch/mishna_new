@@ -33,7 +33,7 @@ def parse_config():
         "MISHNA_GROUP",
         "SERIALZIZATION_FILENAME",
         "TELEGRAM_TOKEN",
-        "WHAPI_AUTH"
+        "WHAPI_AUTH",
         "X_WM_CLIENT_ID",
         "X_WM_CLIENT_SECRET"
     ]
