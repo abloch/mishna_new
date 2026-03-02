@@ -207,7 +207,6 @@ def send_all(config, masechet, chapter, mishna):
             send_to_telegram(config, out)
         except Exception as e:
             print(e)
-    open("mishna.txt", "w").write(out)
 
 def get_next_mishna(masechet, chapter, mishna):
     import urllib.parse
@@ -233,6 +232,7 @@ def get_next_mishna(masechet, chapter, mishna):
     parts = re.search(r"\{\{(.*?)\}\}", metadata).group(1).split("|")
     next_mishna = parts[6]
     *masechet, chapter, mishna = next_mishna.split(" ")
+    print(f"Next Mishna: {masechet} {chapter} {mishna}")
     return " ".join(masechet), chapter, mishna
 
 def serialize(config, masechet, chapter, mishna):
@@ -248,7 +248,9 @@ def deserialize(config):
 def main():
     config = parse_config()
     masechet, chapter, mishna = deserialize(config)
-    if not config.get("DRY_RUN"):
+    if config.get("DRY_RUN"):
+        print("dry run")
+    else:
         send_all(config, masechet, chapter, mishna)
     masechet, chapter, mishna = get_next_mishna(masechet, chapter, mishna)
     serialize(config, masechet, chapter, mishna)
