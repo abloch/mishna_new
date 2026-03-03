@@ -31,6 +31,7 @@ def parse_config():
         "GOOGLE_STORAGE_BUCKET",
         "GROUP_ADMIN",
         "MISHNA_GROUP",
+        "TELEGRAM_GROUP",
         "SERIALZIZATION_FILENAME",
         "TELEGRAM_TOKEN",
         "WHAPI_AUTH",
@@ -194,6 +195,8 @@ def send_to_whatsapp(config, message):
 def send_to_telegram(config, message, group="@mishna"):
     if config["DRY_RUN"]:
         group = 215513269
+    if config.get("TELEGRAM_GROUP")
+        group = config["TELEGRAM_GROUP"]
     token = config["TELEGRAM_TOKEN"]
     requests.get(
         f"https://api.telegram.org/bot{token}/sendMessage",
