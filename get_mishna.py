@@ -195,7 +195,7 @@ def send_to_whatsapp(config, message):
 def send_to_telegram(config, message, group="@mishna"):
     if config["DRY_RUN"]:
         group = 215513269
-    if config.get("TELEGRAM_GROUP")
+    if config.get("TELEGRAM_GROUP"):
         group = config["TELEGRAM_GROUP"]
     token = config["TELEGRAM_TOKEN"]
     requests.get(
