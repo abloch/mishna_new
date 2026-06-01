@@ -110,7 +110,10 @@ def get_commentary(masechet, chapter, mishna):
     html = get_mishna_part(masechet, chapter, mishna)
     soup = BeautifulSoup(html, features='html.parser')
     parts = soup.find_all("small")
-    return [part.parent.parent.text.split("\xa0") for part in parts if hasattr(part, 'text')]
+    return [
+        (part.parent.parent.text if part.parent.parent is not None else part.text).split("\xa0")
+        for part in parts if hasattr(part, 'text')
+    ]
 
 def get_explanations(masechet, chapter, mishna):
     html = get_mishna_part(masechet, chapter, mishna)
@@ -118,7 +121,13 @@ def get_explanations(masechet, chapter, mishna):
     return [td.text.strip() for td in soup.find_all("table") if hasattr(td, 'text')]
 
 def commentize(commetraies):
-    return "\n".join([f"*{c[0].strip()}* - _{c[1].strip()}_" for c in commetraies])
+    lines = []
+    for c in commetraies:
+        if len(c) >= 2:
+            lines.append(f"*{c[0].strip()}* - _{c[1].strip()}_")
+        elif len(c) == 1 and c[0].strip():
+            lines.append(f"_{c[0].strip()}_")
+    return "\n".join(lines)
 
 def get_commentary_url(masechet, chapter, mishna):
     wikitext = f"https://he.wikisource.org/wiki/משנה_{masechet}_{chapter}_{mishna}"
