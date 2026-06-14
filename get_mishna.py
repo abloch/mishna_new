@@ -155,12 +155,19 @@ def get_mishna_part(masechet, chapter, mishna):
     all_text = get_wikisource_page(url, True)
     soup = BeautifulSoup(all_text, features='html.parser')
     el = soup.find("div", {"id": f"משנה_{mishna}"})
-    elements = [el]
     if el is None:
-        raise f"could not parse {el}"
+        anchor = soup.find(id=f"משנה_{mishna}")
+        if anchor is None:
+            raise RuntimeError(f"could not locate משנה_{mishna} in {url}")
+        el = anchor.find_parent(["h2", "h3", "h4"]) or anchor
+    elements = [el]
     for i in el.next_siblings:
-        if i.name=='div' and i.get("id", "").startswith("משנה_"):
+        if i.name == 'div' and i.get("id", "").startswith("משנה_"):
             break
+        if i.name in ('h2', 'h3', 'h4'):
+            nested = i.find(id=lambda v: v and v.startswith("משנה_"))
+            if nested is not None:
+                break
         # if hasattr(i, 'text'):
         elements.append(i)
     return "".join([i.decode_contents() for i in elements if hasattr(i, 'decode_contents')])
@@ -240,7 +247,7 @@ def get_next_mishna(masechet, chapter, mishna):
 
     metadata = next(iter(reply["query"]["pages"].values()))["revisions"][0]["slots"]["main"]["*"]
     if metadata is None:
-        raise f"{url} is malformed"
+        raise RuntimeError(f"{url} is malformed")
     parts = re.search(r"\{\{(.*?)\}\}", metadata).group(1).split("|")
     next_mishna = parts[6]
     *masechet, chapter, mishna = next_mishna.split(" ")
